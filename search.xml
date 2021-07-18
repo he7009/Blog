@@ -1,0 +1,601 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Docker-Compose 构建 lnmp 环境</title>
+    <url>/2021/03/27/docker/docker-compose-chang-yong-ming-ling/</url>
+    <content><![CDATA[<h2 id="docker-compose-yml-文件部分命令说明"><a href="#docker-compose-yml-文件部分命令说明" class="headerlink" title="docker-compose.yml 文件部分命令说明"></a>docker-compose.yml 文件部分命令说明</h2><hr>
+<table>
+<thead>
+<tr>
+<th>build</th>
+<th>指定 Dockerfile 所在文件夹路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>container_name</td>
+<td>指定容器名称</td>
+</tr>
+<tr>
+<td>depends_on</td>
+<td>指定多个服务之间的依赖关系，启动时会先启动被依赖服务</td>
+</tr>
+<tr>
+<td>entrypoint</td>
+<td>覆盖容器中默认的入口命令</td>
+</tr>
+<tr>
+<td>environment</td>
+<td>设置环境变量</td>
+</tr>
+<tr>
+<td>image</td>
+<td>指定为镜像名称或镜像ID，如果本地镜像不存在，Compose会尝试拉取这个镜像</td>
+</tr>
+<tr>
+<td>networks</td>
+<td>所加入的网络</td>
+</tr>
+<tr>
+<td>ports</td>
+<td>端口映射</td>
+</tr>
+<tr>
+<td>volumes</td>
+<td>数据卷路径映射</td>
+</tr>
+<tr>
+<td>restart</td>
+<td>设置重启策略</td>
+</tr>
+</tbody></table>
+<a id="more"></a>
+
+<h2 id="创建容器、查看容器"><a href="#创建容器、查看容器" class="headerlink" title="创建容器、查看容器"></a>创建容器、查看容器</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建容器</span></span><br><span class="line"><span class="comment"># 会尝试构建镜像、创建容器、启动容器</span></span><br><span class="line">docker-compose up -d</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看容器</span></span><br><span class="line">docker-compose ps</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="停止、启动、重新构建镜像、查看输出"><a href="#停止、启动、重新构建镜像、查看输出" class="headerlink" title="停止、启动、重新构建镜像、查看输出"></a>停止、启动、重新构建镜像、查看输出</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 停止容器</span></span><br><span class="line"><span class="comment"># 指定容器则关闭指定容器</span></span><br><span class="line"><span class="comment"># 不指定容器则关闭所有容器</span></span><br><span class="line">docker-compose stop 容器名称</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动容器</span></span><br><span class="line"><span class="comment"># 指定容器则启动指定容器</span></span><br><span class="line"><span class="comment"># 不指定容器则启动所有容器</span></span><br><span class="line">docker-compose start 容器名称</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重新构建镜像</span></span><br><span class="line"><span class="comment"># 指定镜像则构建指定镜像</span></span><br><span class="line"><span class="comment"># 不指定镜像则构建所有镜像</span></span><br><span class="line">docker-compose build 容器名称</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看容器输出</span></span><br><span class="line">docker-compose logs 容器名称</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="搭建-lnmp-环境"><a href="#搭建-lnmp-环境" class="headerlink" title="搭建 lnmp 环境"></a>搭建 lnmp 环境</h2><hr>
+<h3 id="文件目录结构"><a href="#文件目录结构" class="headerlink" title="文件目录结构"></a>文件目录结构</h3><figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line">├── data</span><br><span class="line">│   └── mysql</span><br><span class="line">├── logs</span><br><span class="line">│   ├── mysql</span><br><span class="line">│   ├── nginx</span><br><span class="line">│   ├── php56</span><br><span class="line">│   └── php74</span><br><span class="line">├── services</span><br><span class="line">│   ├── mysql</span><br><span class="line">│   │   ├── Dockerfile</span><br><span class="line">│   │   └── conf</span><br><span class="line">│   │       ├── conf.d</span><br><span class="line">│   │       │   ├── docker.cnf</span><br><span class="line">│   │       │   └── mysql.cnf</span><br><span class="line">│   │       ├── my.cnf</span><br><span class="line">│   │       └── my.cnf.fallback</span><br><span class="line">│   ├── nginx</span><br><span class="line">│   │   ├── Dockerfile</span><br><span class="line">│   │   └── conf</span><br><span class="line">│   │       ├── cert</span><br><span class="line">│   │       │   ├── www.key</span><br><span class="line">│   │       │   └── www.pem</span><br><span class="line">│   │       ├── fastcgi.conf</span><br><span class="line">│   │       ├── fastcgi_params</span><br><span class="line">│   │       ├── koi-utf</span><br><span class="line">│   │       ├── koi-win</span><br><span class="line">│   │       ├── mime.types</span><br><span class="line">│   │       ├── nginx.conf</span><br><span class="line">│   │       ├── rewrite</span><br><span class="line">│   │       │   └── www.rewrite</span><br><span class="line">│   │       ├── scgi_params</span><br><span class="line">│   │       ├── uwsgi_params</span><br><span class="line">│   │       ├── vhost</span><br><span class="line">│   │       │   └── www.conf</span><br><span class="line">│   │       └── win-utf</span><br><span class="line">│   ├── php56</span><br><span class="line">│   │   ├── Dockerfile</span><br><span class="line">│   │   └── etc</span><br><span class="line">│   │       ├── php</span><br><span class="line">│   │       │   ├── php.ini</span><br><span class="line">│   │       │   ├── php.ini-development</span><br><span class="line">│   │       │   └── php.ini-production</span><br><span class="line">│   │       ├── php-fpm.conf</span><br><span class="line">│   │       ├── php-fpm.conf.default</span><br><span class="line">│   │       └── php-fpm.d</span><br><span class="line">│   │           ├── docker.conf</span><br><span class="line">│   │           ├── www.conf</span><br><span class="line">│   │           └── zz-docker.conf</span><br><span class="line">│   └── php74</span><br><span class="line">│       ├── Dockerfile</span><br><span class="line">│       ├── etc</span><br><span class="line">│       │   ├── php</span><br><span class="line">│       │   │   ├── php.ini</span><br><span class="line">│       │   │   ├── php.ini-development</span><br><span class="line">│       │   │   └── php.ini-production</span><br><span class="line">│       │   ├── php-fpm.conf</span><br><span class="line">│       │   ├── php-fpm.conf.default</span><br><span class="line">│       │   └── php-fpm.d</span><br><span class="line">│       │       ├── docker.conf</span><br><span class="line">│       │       ├── www.conf</span><br><span class="line">│       │       └── zz-docker.conf</span><br><span class="line">│       └── install-php-extensions</span><br><span class="line">└── www</span><br><span class="line">│   └── index.php</span><br><span class="line">├── docker-compose.yml</span><br></pre></td></tr></table></figure>
+<h3 id="docker-compose-yml"><a href="#docker-compose-yml" class="headerlink" title="docker-compose.yml"></a>docker-compose.yml</h3><figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">&quot;3&quot;</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">nginx:</span></span><br><span class="line">    <span class="attr">build:</span></span><br><span class="line">      <span class="attr">context:</span> <span class="string">./services/nginx</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">nginx</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">80</span><span class="string">:80</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">443</span><span class="string">:443</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./www:/www</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/nginx/conf:/etc/nginx</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./logs/nginx:/var/log/nginx</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">always</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">php56</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">php74</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">&quot;Asia/Shanghai&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">php56:</span></span><br><span class="line">    <span class="attr">build:</span></span><br><span class="line">      <span class="attr">context:</span> <span class="string">./services/php56</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">php56</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./www:/www</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/php56/etc/php/php.ini:/usr/local/etc/php/php.ini</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/php56/etc/php-fpm.conf:/usr/local/etc/php-fpm.conf</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/php56/etc/php-fpm.d:/usr/local/etc/php-fpm.d</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./logs/php56:/var/log/php</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">always</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">mysql57</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">&quot;Asia/Shanghai&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">php74:</span></span><br><span class="line">    <span class="attr">build:</span></span><br><span class="line">      <span class="attr">context:</span> <span class="string">./services/php74</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">php74</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./www:/www</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/php74/etc/php/php.ini:/usr/local/etc/php/php.ini</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/php74/etc/php-fpm.conf:/usr/local/etc/php-fpm.conf</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/php74/etc/php-fpm.d:/usr/local/etc/php-fpm.d</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./logs/php74:/var/log/php</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">always</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">mysql57</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">&quot;Asia/Shanghai&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">mysql57:</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">mysql57</span></span><br><span class="line">    <span class="attr">build:</span></span><br><span class="line">      <span class="attr">context:</span> <span class="string">./services/mysql</span></span><br><span class="line">      <span class="attr">args:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">MYSQL_VER=5.7</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="number">3306</span><span class="string">:3306</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./services/mysql/conf:/etc/mysql</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./data/mysql:/var/lib/mysql</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./logs/mysql:/var/log/mysql</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">MYSQL_ROOT_PASSWORD:</span> <span class="number">123456</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">always</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="PHP5-6-Dockerfile"><a href="#PHP5-6-Dockerfile" class="headerlink" title="PHP5.6 Dockerfile"></a>PHP5.6 Dockerfile</h3><figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 基础镜像</span></span><br><span class="line"><span class="keyword">FROM</span> php:<span class="number">5.6</span>-fpm-alpine</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改系统镜像源、安装依赖</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">&quot;s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g&quot;</span> /etc/apk/repositories \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk update \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk --no-cache add tzdata \</span></span><br><span class="line"><span class="bash">  &amp;&amp; cp <span class="string">&quot;/usr/share/zoneinfo/Asia/Shanghai&quot;</span> /etc/localtime \</span></span><br><span class="line"><span class="bash">  &amp;&amp; <span class="built_in">echo</span> <span class="string">&quot;Asia/Shanghai&quot;</span> &gt; /etc/timezone \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk add --no-cache --virtual .build-deps autoconf g++ libtool make linux-headers bzip2-dev libzip-dev</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 扩展脚本-用于安装PHP扩展</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/<span class="built_in">local</span>/bin/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装 PHP 扩展</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> chmod +x /usr/<span class="built_in">local</span>/bin/install-php-extensions &amp;&amp; sync &amp;&amp; \</span></span><br><span class="line"><span class="bash">    install-php-extensions rdkafka pcntl swoole redis bcmath bz2 gd \</span></span><br><span class="line"><span class="bash">    gettext imagick mcrypt memcached mongodb mysqli pcntl \</span></span><br><span class="line"><span class="bash">    pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm xdebug \</span></span><br><span class="line"><span class="bash">    xmlrpc zip mysql</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装 PHP 分词扩展</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> mkdir /tmp/extensions</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /tmp/extensions</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> mkdir /tmp/scws \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-1.2.3.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xjf /tmp/extensions/scws-1.2.3.tar.bz2 -C /tmp/scws --strip-components=1 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">cd</span> /tmp/scws  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ./configure --prefix=/usr/<span class="built_in">local</span>/scws  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; make &amp;&amp; make install  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ( <span class="built_in">cd</span> phpext &amp;&amp; phpize &amp;&amp; ./configure --with-scws=/usr/<span class="built_in">local</span>/scws &amp;&amp; make &amp;&amp; make install ) \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">cd</span> /usr/<span class="built_in">local</span>/scws/etc \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-dict-chs-gbk.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-dict-chs-utf8.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xvjf scws-dict-chs-gbk.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xvjf scws-dict-chs-utf8.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; docker-php-ext-enable scws \</span></span><br><span class="line"><span class="bash">    &amp;&amp; rm -rf /tmp/*</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> LD_PRELOAD /usr/lib/preloadable_libiconv.so php</span><br></pre></td></tr></table></figure>
+<h3 id="PHP7-4-Dockerfile"><a href="#PHP7-4-Dockerfile" class="headerlink" title="PHP7.4 Dockerfile"></a>PHP7.4 Dockerfile</h3><figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 基础镜像</span></span><br><span class="line"><span class="keyword">FROM</span> php:<span class="number">7.4</span>-fpm-alpine</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改系统镜像源、安装依赖</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">&quot;s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g&quot;</span> /etc/apk/repositories \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk update \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk --no-cache add tzdata \</span></span><br><span class="line"><span class="bash">  &amp;&amp; cp <span class="string">&quot;/usr/share/zoneinfo/Asia/Shanghai&quot;</span> /etc/localtime \</span></span><br><span class="line"><span class="bash">  &amp;&amp; <span class="built_in">echo</span> <span class="string">&quot;Asia/Shanghai&quot;</span> &gt; /etc/timezone \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk add --no-cache --virtual .build-deps autoconf g++ libtool make linux-headers bzip2-dev libzip-dev</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 扩展脚本-用于安装PHP扩展</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/<span class="built_in">local</span>/bin/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装 PHP 扩展</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> chmod +x /usr/<span class="built_in">local</span>/bin/install-php-extensions &amp;&amp; sync &amp;&amp; \</span></span><br><span class="line"><span class="bash">    install-php-extensions rdkafka pcntl swoole redis bcmath bz2 gd \</span></span><br><span class="line"><span class="bash">    gettext imagick mcrypt memcached mongodb mysqli pcntl \</span></span><br><span class="line"><span class="bash">    pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm xdebug \</span></span><br><span class="line"><span class="bash">    xmlrpc zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装 PHP 分词扩展</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> mkdir /tmp/extensions</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /tmp/extensions</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> mkdir /tmp/scws \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-1.2.3.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xjf /tmp/extensions/scws-1.2.3.tar.bz2 -C /tmp/scws --strip-components=1 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">cd</span> /tmp/scws  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ./configure --prefix=/usr/<span class="built_in">local</span>/scws  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; make &amp;&amp; make install  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ( <span class="built_in">cd</span> phpext &amp;&amp; phpize &amp;&amp; ./configure --with-scws=/usr/<span class="built_in">local</span>/scws &amp;&amp; make &amp;&amp; make install ) \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">cd</span> /usr/<span class="built_in">local</span>/scws/etc \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-dict-chs-gbk.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-dict-chs-utf8.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xvjf scws-dict-chs-gbk.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xvjf scws-dict-chs-utf8.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; docker-php-ext-enable scws \</span></span><br><span class="line"><span class="bash">    &amp;&amp; rm -rf /tmp/*</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> LD_PRELOAD /usr/lib/preloadable_libiconv.so php</span><br></pre></td></tr></table></figure>
+<h3 id="Nginx-Dockerfile"><a href="#Nginx-Dockerfile" class="headerlink" title="Nginx Dockerfile"></a>Nginx Dockerfile</h3><figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 基础镜像</span></span><br><span class="line"><span class="keyword">FROM</span> nginx:alpine</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改系统镜像源、安装依赖</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">&quot;s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g&quot;</span> /etc/apk/repositories \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk --no-cache add tzdata \</span></span><br><span class="line"><span class="bash">  &amp;&amp; cp <span class="string">&quot;/usr/share/zoneinfo/Asia/Shanghai&quot;</span> /etc/localtime \</span></span><br><span class="line"><span class="bash">  &amp;&amp; <span class="built_in">echo</span> <span class="string">&quot;Asia/Shanghai&quot;</span> &gt; /etc/timezone</span></span><br><span class="line">  </span><br></pre></td></tr></table></figure>
+<h3 id="Mysql-Dockerfile"><a href="#Mysql-Dockerfile" class="headerlink" title="Mysql Dockerfile"></a>Mysql Dockerfile</h3><figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment"># mysql 版本变量</span></span><br><span class="line"><span class="keyword">ARG</span> MYSQL_VER</span><br><span class="line"></span><br><span class="line"><span class="comment"># 基础镜像</span></span><br><span class="line"><span class="keyword">FROM</span> mysql:$&#123;MYSQL_VER&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置时区为上海</span></span><br><span class="line"><span class="keyword">ENV</span> TZ=Asia/Shanghai</span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> ln -snf /usr/share/zoneinfo/<span class="variable">$TZ</span> /etc/localtime &amp;&amp; <span class="built_in">echo</span> <span class="variable">$TZ</span> &gt; /etc/timezone</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu软件源选择中国的服务器</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">&#x27;s/archive.ubuntu.com/mirrors.aliyun.com/g&#x27;</span> /etc/apt/sources.list</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 更新安装依赖包</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt-get update &amp;&amp; apt-get install -y vim wget</span></span><br></pre></td></tr></table></figure>
+
+
+]]></content>
+      <categories>
+        <category>Docker</category>
+      </categories>
+      <tags>
+        <tag>lnmp</tag>
+        <tag>docker-compose</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Docker-Container 常用命令</title>
+    <url>/2021/03/27/docker/docker-container-chang-yong-ming-ling/</url>
+    <content><![CDATA[<h2 id="查看容器和复制文件"><a href="#查看容器和复制文件" class="headerlink" title="查看容器和复制文件"></a>查看容器和复制文件</h2><hr>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 查看正在运行的容器列表</span></span><br><span class="line">docker ps </span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看所有容器列表</span></span><br><span class="line">docker ps -a</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看容器详情</span></span><br><span class="line">docker inspect (容器名称:容器标签)|容器ID</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看容器端口映射</span></span><br><span class="line">docker port (容器名称:容器标签)|容器ID</span><br><span class="line"></span><br><span class="line"><span class="comment"># 容器和主机之间复制文件</span></span><br><span class="line"><span class="comment"># 本地复制到容器</span></span><br><span class="line">docker cp 本地路径 容器名称｜容器ID:容器内存储路径</span><br><span class="line"><span class="comment"># 容器内复制到本地</span></span><br><span class="line">docker cp 容器名称｜容器ID:容器内存储路径 本地路径</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<a id="more"></a>
+
+<h2 id="创建容器、进入容器"><a href="#创建容器、进入容器" class="headerlink" title="创建容器、进入容器"></a>创建容器、进入容器</h2><hr>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建容器、启动容器、创建并启动、查看容器输出信息</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建容器</span></span><br><span class="line"></span><br><span class="line">  docker create -it --name 容器别名 -p 本地端口:容器端口 -v 本地路径:容器路径 --link 链接到其他容器 镜像名称:镜像标签</span><br><span class="line"></span><br><span class="line">  <span class="comment"># -i: 保持标准输入打开</span></span><br><span class="line">  <span class="comment"># -t: 分配伪终端</span></span><br><span class="line">  <span class="comment"># --name: 设置容器别名，后面可以使用容器别名来操作容器</span></span><br><span class="line">  <span class="comment"># -p: 端口映射</span></span><br><span class="line">  <span class="comment"># -v: 文件系统映射</span></span><br><span class="line">  <span class="comment"># --link: 链接其他容器</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动容器</span></span><br><span class="line"></span><br><span class="line">  docker start 容器ID｜容器别名</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建并启动容器</span></span><br><span class="line"></span><br><span class="line">  docker run  ...</span><br><span class="line"></span><br><span class="line">  <span class="comment"># 相当于先创建 docker create 后 docker start 启动</span></span><br><span class="line">  <span class="comment"># 加 -d 以守护进程启动</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看容器输出信息</span></span><br><span class="line"></span><br><span class="line">	docker logs 容器ID｜容器别名</span><br><span class="line">  </span><br><span class="line"></span><br><span class="line"><span class="comment"># 进入容器</span></span><br><span class="line"></span><br><span class="line">	docker <span class="built_in">exec</span> -it 容器ID｜容器别名 执行命令</span><br><span class="line">  </span><br><span class="line">	<span class="comment"># -i: 打开标准输入，接受用户输入命令</span></span><br><span class="line">  <span class="comment"># -t: 分配伪终端</span></span><br><span class="line">  </span><br></pre></td></tr></table></figure>
+<h2 id="停止容器、删除容器"><a href="#停止容器、删除容器" class="headerlink" title="停止容器、删除容器"></a>停止容器、删除容器</h2><hr>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 停止容器</span></span><br><span class="line">docker stop 容器ID｜容器别名</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除容器</span></span><br><span class="line">docker rm 容器别名｜容器ID</span><br></pre></td></tr></table></figure>
+
+
+]]></content>
+      <categories>
+        <category>Docker</category>
+      </categories>
+      <tags>
+        <tag>container</tag>
+        <tag>容器</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Docker-image 常用命令</title>
+    <url>/2021/03/27/docker/docker-image-chang-yong-ming-ling/</url>
+    <content><![CDATA[<h2 id="查看镜像列表"><a href="#查看镜像列表" class="headerlink" title="查看镜像列表"></a>查看镜像列表</h2><hr>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker images		或者		docker image list</span><br></pre></td></tr></table></figure>
+
+<a id="more"></a>
+
+<h2 id="image-创建"><a href="#image-创建" class="headerlink" title="image 创建"></a>image 创建</h2><hr>
+<ol>
+<li>docker pull 直接拉取 image</li>
+<li>dockerfile 构建</li>
+<li>基于已有容器创建</li>
+<li>导入本地 image</li>
+</ol>
+<h3 id="docker-pull"><a href="#docker-pull" class="headerlink" title="docker pull"></a>docker pull</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 命令格式</span></span><br><span class="line">docker [image] pull NAME [ :TAG]</span><br><span class="line"></span><br><span class="line"><span class="comment"># NAME：镜像名称</span></span><br><span class="line"><span class="comment"># TAG：镜像标签</span></span><br><span class="line"><span class="comment"># 如果不显式指定TAG, 则默认会选择latest标签</span></span><br></pre></td></tr></table></figure>
+<h3 id="dockerfile-构建"><a href="#dockerfile-构建" class="headerlink" title="dockerfile 构建"></a>dockerfile 构建</h3><p>部分指令：</p>
+<table>
+<thead>
+<tr>
+<th align="center">指令</th>
+<th align="center">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">FROM</td>
+<td align="center">指定所创建镜像的基础镜像</td>
+</tr>
+<tr>
+<td align="center">LABEL</td>
+<td align="center">LABEL 指令可以为生成的镜像添加元数据标签信息</td>
+</tr>
+<tr>
+<td align="center">ARG</td>
+<td align="center">定义创建镜像过程中使用的变量，镜像创建成功后变量将不再存在</td>
+</tr>
+<tr>
+<td align="center">ENV</td>
+<td align="center">指定环境变量，可以被后续的 RUN 指令使用，在镜像启动的容器中也会存在</td>
+</tr>
+<tr>
+<td align="center">ENTRYPOINT</td>
+<td align="center">指定镜像的默认入口命令</td>
+</tr>
+<tr>
+<td align="center">WORKDIR</td>
+<td align="center">为后续的 RUN、CMD、ENTRYPOINT 指令配置工作目录</td>
+</tr>
+<tr>
+<td align="center">RUN</td>
+<td align="center">运行指定命令</td>
+</tr>
+<tr>
+<td align="center">CMD</td>
+<td align="center">容器启动后默认执行的命令</td>
+</tr>
+<tr>
+<td align="center">ADD</td>
+<td align="center">添加内容到镜像；支持本地文件的相对路径和绝对路径，也可以是URL</td>
+</tr>
+<tr>
+<td align="center">COPY</td>
+<td align="center">复制本地主机内容到镜像</td>
+</tr>
+<tr>
+<td align="center">EXPOSE</td>
+<td align="center">声明服务监听的端口；只是声明并没有做端口映射</td>
+</tr>
+</tbody></table>
+<p>示例：</p>
+<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="keyword">FROM</span> php:<span class="number">7.4</span>-fpm-alpine</span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">&quot;s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g&quot;</span> /etc/apk/repositories \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk update \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk --no-cache add tzdata \</span></span><br><span class="line"><span class="bash">  &amp;&amp; cp <span class="string">&quot;/usr/share/zoneinfo/Asia/Shanghai&quot;</span> /etc/localtime \</span></span><br><span class="line"><span class="bash">  &amp;&amp; <span class="built_in">echo</span> <span class="string">&quot;Asia/Shanghai&quot;</span> &gt; /etc/timezone \</span></span><br><span class="line"><span class="bash">  &amp;&amp; apk add --no-cache --virtual .build-deps autoconf g++ libtool make linux-headers bzip2-dev libzip-dev</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> ./install-php-extensions /usr/<span class="built_in">local</span>/bin/</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> chmod +x /usr/<span class="built_in">local</span>/bin/install-php-extensions &amp;&amp; sync &amp;&amp; \</span></span><br><span class="line"><span class="bash">    install-php-extensions rdkafka pcntl swoole redis bcmath bz2 gd \</span></span><br><span class="line"><span class="bash">    gettext imagick mcrypt memcached mongodb mysqli pcntl \</span></span><br><span class="line"><span class="bash">    pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm xdebug \</span></span><br><span class="line"><span class="bash">    xmlrpc zip</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> mkdir /tmp/extensions</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /tmp/extensions</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> mkdir /tmp/scws \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-1.2.3.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xjf /tmp/extensions/scws-1.2.3.tar.bz2 -C /tmp/scws --strip-components=1 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">cd</span> /tmp/scws  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ./configure --prefix=/usr/<span class="built_in">local</span>/scws  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; make &amp;&amp; make install  \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ( <span class="built_in">cd</span> phpext &amp;&amp; phpize &amp;&amp; ./configure --with-scws=/usr/<span class="built_in">local</span>/scws &amp;&amp; make &amp;&amp; make install ) \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">cd</span> /usr/<span class="built_in">local</span>/scws/etc \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-dict-chs-gbk.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; wget http://www.xunsearch.com/scws/down/scws-dict-chs-utf8.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xvjf scws-dict-chs-gbk.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xvjf scws-dict-chs-utf8.tar.bz2 \</span></span><br><span class="line"><span class="bash">    &amp;&amp; docker-php-ext-enable scws \</span></span><br><span class="line"><span class="bash">    &amp;&amp; rm -rf /tmp/*</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> LD_PRELOAD /usr/lib/preloadable_libiconv.so php</span><br></pre></td></tr></table></figure>
+<p>docker build 镜像</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 命令格式</span></span><br><span class="line">docker build [OPTIONS] PATH [ URL I -</span><br><span class="line"></span><br><span class="line"><span class="comment"># 主要 OPTIONS</span></span><br><span class="line"><span class="comment"># -build-arg : 为 dockerfile 中的 arg 变量赋值</span></span><br><span class="line"><span class="comment"># -f : 指定 dockerfile 名称</span></span><br><span class="line"><span class="comment"># -t : 指定 image 标签</span></span><br></pre></td></tr></table></figure>
+
+
+<h3 id="基于已有容器创建"><a href="#基于已有容器创建" class="headerlink" title="基于已有容器创建"></a>基于已有容器创建</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 命令格式</span></span><br><span class="line">docker [container] commit [OPTIONS] CONTAINER [REPOSITORY [:TAG]]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 主要OPTIONS</span></span><br><span class="line"><span class="comment"># -c: 作者信息</span></span><br><span class="line"><span class="comment"># -m: 提交信息</span></span><br></pre></td></tr></table></figure>
+<h3 id="导入本地-image"><a href="#导入本地-image" class="headerlink" title="导入本地 image"></a>导入本地 image</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 导出镜像</span></span><br><span class="line">docker save -o 导出镜像名称 镜像名称[:镜像标签]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 载入镜像</span></span><br><span class="line">docker load -i 本地镜像文件</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或者</span></span><br><span class="line">docker load &lt; 本地镜像文件 </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="image-删除"><a href="#image-删除" class="headerlink" title="image 删除"></a>image 删除</h2><hr>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 删除单个镜像</span></span><br><span class="line">docker rmi 镜像名称:镜像标签		或者		docker rmi 镜像ID</span><br><span class="line"></span><br><span class="line"><span class="comment"># 按条件筛选之后删除</span></span><br><span class="line">docker rmi `docker images | grep xxxxx | awk <span class="string">&#x27;&#123;print $3&#125;&#x27;</span>`</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+]]></content>
+      <categories>
+        <category>Docker</category>
+      </categories>
+      <tags>
+        <tag>image</tag>
+        <tag>镜像</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>GO Error 处理</title>
+    <url>/2020/12/10/go/go-error-chu-li/</url>
+    <content><![CDATA[<h2 id="关于错误处理的几点理解"><a href="#关于错误处理的几点理解" class="headerlink" title="关于错误处理的几点理解"></a>关于错误处理的几点理解</h2><hr>
+<ol>
+<li>错误只应该被处理一次，写日志、降级、返回错误等都算作对错误的处理。写了日志、做了降级就不应该继续返回错误；如果返回错误，则不做其他处理。</li>
+<li>错误应该包含错误信息和堆栈信息，以便于后续的错误查找和调试。</li>
+<li>项目中应该尽量简洁明了的进行错误的判断处理。</li>
+</ol>
+<a id="more"></a>
+
+
+<h2 id="早期的错误处理"><a href="#早期的错误处理" class="headerlink" title="早期的错误处理"></a>早期的错误处理</h2><hr>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> errors</span><br><span class="line"></span><br><span class="line"><span class="comment">//创建包含错误信息的错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">New</span><span class="params">(text <span class="keyword">string</span>)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> &amp;errorString&#123;text&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> errorString <span class="keyword">struct</span> &#123;</span><br><span class="line">	s <span class="keyword">string</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//实现 Error 接口</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(e *errorString)</span> <span class="title">Error</span><span class="params">()</span> <span class="title">string</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> e.s</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>只是简单的包含错误的信息，存在两个问题：</p>
+<ul>
+<li>上层无法添加错误信息</li>
+<li>错误信息不包含堆栈信息；不利于调试和错误查找</li>
+</ul>
+<h2 id="GO-1-13-错误处理"><a href="#GO-1-13-错误处理" class="headerlink" title="GO 1.13 错误处理"></a>GO 1.13 错误处理</h2><hr>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">//errors package</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//判断是否实现 interface &#123; Unwrap() error &#125; 接口，实现则调用返回根错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Unwrap</span><span class="params">(err error)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">	u, ok := err.(<span class="keyword">interface</span> &#123;</span><br><span class="line">		Unwrap() error</span><br><span class="line">	&#125;)</span><br><span class="line">	<span class="keyword">if</span> !ok &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> u.Unwrap()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//判断 err 错误是否 等于 target 错误，或者包含 target 错误</span></span><br><span class="line"><span class="comment">//如果 err 和 target 是同一个，那么返回true</span></span><br><span class="line"><span class="comment">//如果 err 是一个打包(wrap) 错误;并且 err 包含 target 错误 返回true</span></span><br><span class="line"><span class="comment">//不等于也不包含则返回false</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Is</span><span class="params">(err, target error)</span> <span class="title">bool</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//获取错误中包含的 具体错误，方法内部进行断言</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">As</span><span class="params">(err error, target <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">bool</span></span> &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">//fmt package</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//打包根错误、添加错误信息；实现 interface &#123; Unwrap() error &#125; 接口来返回根错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Errorf</span><span class="params">(format <span class="keyword">string</span>, a ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//wrapErro struct 包装 error</span></span><br><span class="line"><span class="keyword">type</span> wrapError <span class="keyword">struct</span> &#123;</span><br><span class="line">	msg <span class="keyword">string</span></span><br><span class="line">	err error</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//实现error接口</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(e *wrapError)</span> <span class="title">Error</span><span class="params">()</span> <span class="title">string</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> e.msg</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//实现Unwrap接口</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(e *wrapError)</span> <span class="title">Unwrap</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> e.err</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>GO 1.13 可以通过fmt.Errorf 对错误信息进行wrap,进而添加错误信息;与此同时 errors package 中提供了对错误的Unwrap、 Is、As 方法,用以获取根错误信息和对错误的比较、判断等</p>
+<p>增加了错误信息的wrap但是还是缺少堆栈信息的保存</p>
+<h2 id="pkg-errors"><a href="#pkg-errors" class="headerlink" title="pkg/errors"></a>pkg/errors</h2><hr>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//github.com/pkg/errors</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//包含堆栈信息的error</span></span><br><span class="line"><span class="keyword">type</span> fundamental <span class="keyword">struct</span> &#123;</span><br><span class="line">	msg <span class="keyword">string</span></span><br><span class="line">	*stack</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//实现 error 接口</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(f *fundamental)</span> <span class="title">Error</span><span class="params">()</span> <span class="title">string</span></span> &#123; <span class="keyword">return</span> f.msg &#125;</span><br><span class="line"><span class="comment">//重写format</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(f *fundamental)</span> <span class="title">Format</span><span class="params">(s fmt.State, verb <span class="keyword">rune</span>)</span></span> &#123;</span><br><span class="line">	<span class="keyword">switch</span> verb &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="string">&#x27;v&#x27;</span>:</span><br><span class="line">		<span class="keyword">if</span> s.Flag(<span class="string">&#x27;+&#x27;</span>) &#123;</span><br><span class="line">			io.WriteString(s, f.msg)</span><br><span class="line">			f.stack.Format(s, verb)</span><br><span class="line">			<span class="keyword">return</span></span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">fallthrough</span></span><br><span class="line">	<span class="keyword">case</span> <span class="string">&#x27;s&#x27;</span>:</span><br><span class="line">		io.WriteString(s, f.msg)</span><br><span class="line">	<span class="keyword">case</span> <span class="string">&#x27;q&#x27;</span>:</span><br><span class="line">		fmt.Fprintf(s, <span class="string">&quot;%q&quot;</span>, f.msg)</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// withStack struct 打包error,包含堆栈信息</span></span><br><span class="line"><span class="keyword">type</span> withStack <span class="keyword">struct</span> &#123;</span><br><span class="line">	error</span><br><span class="line">	*stack</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//实现Cause接口，返回根错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(w *withStack)</span> <span class="title">Cause</span><span class="params">()</span> <span class="title">error</span></span> &#123; <span class="keyword">return</span> w.error &#125;</span><br><span class="line"><span class="comment">// 实现Unwrap接口，返回根错误（用于兼容GO 1.13）</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(w *withStack)</span> <span class="title">Unwrap</span><span class="params">()</span> <span class="title">error</span></span> &#123; <span class="keyword">return</span> w.error &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// withMessage 打包 error,添加错误信息</span></span><br><span class="line"><span class="keyword">type</span> withMessage <span class="keyword">struct</span> &#123;</span><br><span class="line">	cause error</span><br><span class="line">	msg   <span class="keyword">string</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(w *withMessage)</span> <span class="title">Error</span><span class="params">()</span> <span class="title">string</span></span> &#123; <span class="keyword">return</span> w.msg + <span class="string">&quot;: &quot;</span> + w.cause.Error() &#125;</span><br><span class="line"><span class="comment">//实现Cause接口，返回根错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(w *withMessage)</span> <span class="title">Cause</span><span class="params">()</span> <span class="title">error</span></span>  &#123; <span class="keyword">return</span> w.cause &#125;</span><br><span class="line"><span class="comment">// 实现Unwrap接口，返回根错误（用于兼容GO 1.13）</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(w *withMessage)</span> <span class="title">Unwrap</span><span class="params">()</span> <span class="title">error</span></span> &#123; <span class="keyword">return</span> w.cause &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//基于 fundamental 创建包含 错误信息 和 堆栈信息 的错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">New</span><span class="params">(message <span class="keyword">string</span>)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Errorf</span><span class="params">(format <span class="keyword">string</span>, args ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//打包（wrap）错误;添加 堆栈信息；</span></span><br><span class="line"><span class="comment">//实现了interface &#123; Cause() error &#125; 接口</span></span><br><span class="line"><span class="comment">//实现了interface &#123; Unwrap() error &#125; 接口兼容 GO 1.13</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">WithStack</span><span class="params">(err error)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//打包（wrap）错误;添加 错误信息；</span></span><br><span class="line"><span class="comment">//实现了interface &#123; Cause() error &#125; 接口</span></span><br><span class="line"><span class="comment">//实现了interface &#123; Unwrap() error &#125; 接口兼容 GO 1.13</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">WithMessage</span><span class="params">(err error, message <span class="keyword">string</span>)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">WithMessagef</span><span class="params">(err error, format <span class="keyword">string</span>, args ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//打包（wrap）错误;添加 错误信息 和 堆栈信息</span></span><br><span class="line"><span class="comment">//实现了interface &#123; Cause() error &#125; 接口</span></span><br><span class="line"><span class="comment">//实现了interface &#123; Unwrap() error &#125; 接口兼容 GO 1.13</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Wrap</span><span class="params">(err error, message <span class="keyword">string</span>)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Wrapf</span><span class="params">(err error, format <span class="keyword">string</span>, args ...<span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//判断是否实现 interface &#123; Cause() error &#125; 接口，实现则调用返回根错误；等同于 GO 1.13 的 Unwrap()</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Cause</span><span class="params">(err error)</span> <span class="title">error</span></span> &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="使用建议"><a href="#使用建议" class="headerlink" title="使用建议"></a>使用建议</h2><hr>
+<ol>
+<li>综合使用 GO 1.13 和 pgk/errors；pkg/errors 打包处理的错误 GO 1.13 提供的 Unwrap、Is、As 同样可以使用</li>
+<li>自己应用层的代码，出现错误；可以使用 pkg/errors 的包，创建一个包含错误信息 和 堆栈信息的错误进行返回</li>
+<li>对于别人返回的错误，如果是底层的未包含堆栈信息的错误可以使用 wrap 打包错误，添加错误信息 和 堆栈信息</li>
+<li>对于别人返回的错误，如果是已经打包，包含 堆栈信息 的错误则直接返回。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Go</category>
+      </categories>
+      <tags>
+        <tag>Error</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>GO - Context 源码解读</title>
+    <url>/2020/12/07/go/go-context-yuan-ma-jie-du/</url>
+    <content><![CDATA[<h1 id="GO-Context-源码解读"><a href="#GO-Context-源码解读" class="headerlink" title="GO - Context 源码解读"></a>GO - Context 源码解读</h1><h2 id="核心接口"><a href="#核心接口" class="headerlink" title="核心接口"></a>核心接口</h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//Context interface</span></span><br><span class="line"><span class="keyword">type</span> Context <span class="keyword">interface</span> &#123;</span><br><span class="line">    <span class="comment">//返回过期时间</span></span><br><span class="line">	Deadline() (deadline time.Time, ok <span class="keyword">bool</span>)</span><br><span class="line">    <span class="comment">//返回 channel。用来判断 goroutine 是否结束</span></span><br><span class="line">	Done() &lt;-<span class="keyword">chan</span> <span class="keyword">struct</span>&#123;&#125;</span><br><span class="line">    <span class="comment">//goroutine 结束错误提示</span></span><br><span class="line">	Err() error</span><br><span class="line">    <span class="comment">//根据Key返回value</span></span><br><span class="line">	Value(key <span class="keyword">interface</span>&#123;&#125;) <span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// sentinel Error; 主动 cancel</span></span><br><span class="line"><span class="keyword">var</span> Canceled = errors.New(<span class="string">&quot;context canceled&quot;</span>)</span><br><span class="line"><span class="comment">// sentinel Error - Deadline Error</span></span><br><span class="line"><span class="keyword">var</span> DeadlineExceeded error = deadlineExceededError&#123;&#125;</span><br><span class="line"><span class="keyword">type</span> deadlineExceededError <span class="keyword">struct</span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(deadlineExceededError)</span> <span class="title">Error</span><span class="params">()</span> <span class="title">string</span></span>   &#123; <span class="keyword">return</span> <span class="string">&quot;context deadline exceeded&quot;</span> &#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(deadlineExceededError)</span> <span class="title">Timeout</span><span class="params">()</span> <span class="title">bool</span></span>   &#123; <span class="keyword">return</span> <span class="literal">true</span> &#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(deadlineExceededError)</span> <span class="title">Temporary</span><span class="params">()</span> <span class="title">bool</span></span> &#123; <span class="keyword">return</span> <span class="literal">true</span> &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//空 Context; 实现 Context interface </span></span><br><span class="line"><span class="keyword">type</span> emptyCtx <span class="keyword">int</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(*emptyCtx)</span> <span class="title">Deadline</span><span class="params">()</span> <span class="params">(deadline time.Time, ok <span class="keyword">bool</span>)</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(*emptyCtx)</span> <span class="title">Done</span><span class="params">()</span> &lt;-<span class="title">chan</span> <span class="title">struct</span></span>&#123;&#125; &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(*emptyCtx)</span> <span class="title">Err</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(*emptyCtx)</span> <span class="title">Value</span><span class="params">(key <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> (</span><br><span class="line">	background = <span class="built_in">new</span>(emptyCtx)</span><br><span class="line">	todo       = <span class="built_in">new</span>(emptyCtx)</span><br><span class="line">)</span><br><span class="line"><span class="comment">//返回 emptycxt</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Background</span><span class="params">()</span> <span class="title">Context</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> background</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TODO</span><span class="params">()</span> <span class="title">Context</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> todo</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<a id="more"></a>
+
+<h2 id="cancelCtx-Struct-实现取消功能"><a href="#cancelCtx-Struct-实现取消功能" class="headerlink" title="cancelCtx Struct - 实现取消功能"></a>cancelCtx Struct - 实现取消功能</h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">//包装Context。创建新的 Context </span></span><br><span class="line"><span class="keyword">type</span> cancelCtx <span class="keyword">struct</span> &#123;</span><br><span class="line">	Context</span><br><span class="line"></span><br><span class="line">	mu       sync.Mutex            <span class="comment">// 用来保护后面的是那个字段</span></span><br><span class="line">	done     <span class="keyword">chan</span> <span class="keyword">struct</span>&#123;&#125;         <span class="comment">// created lazily, closed by first cancel call</span></span><br><span class="line">	children <span class="keyword">map</span>[canceler]<span class="keyword">struct</span>&#123;&#125; <span class="comment">// set to nil by the first cancel call</span></span><br><span class="line">	err      error                 <span class="comment">// set to non-nil by the first cancel call</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//获取 channel；用来判断是否关闭</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *cancelCtx)</span> <span class="title">Done</span><span class="params">()</span> &lt;-<span class="title">chan</span> <span class="title">struct</span></span>&#123;&#125; &#123;</span><br><span class="line">	c.mu.Lock()</span><br><span class="line">	<span class="keyword">if</span> c.done == <span class="literal">nil</span> &#123;</span><br><span class="line">		c.done = <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="keyword">struct</span>&#123;&#125;)</span><br><span class="line">	&#125;</span><br><span class="line">	d := c.done</span><br><span class="line">	c.mu.Unlock()</span><br><span class="line">	<span class="keyword">return</span> d</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//获取关闭原因</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *cancelCtx)</span> <span class="title">Err</span><span class="params">()</span> <span class="title">error</span></span> &#123;</span><br><span class="line">	c.mu.Lock()</span><br><span class="line">	err := c.err</span><br><span class="line">	c.mu.Unlock()</span><br><span class="line">	<span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *cancelCtx)</span> <span class="title">Value</span><span class="params">(key <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">	<span class="keyword">if</span> key == &amp;cancelCtxKey &#123;</span><br><span class="line">		<span class="keyword">return</span> c</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> c.Context.Value(key)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//取消context</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *cancelCtx)</span> <span class="title">cancel</span><span class="params">(removeFromParent <span class="keyword">bool</span>, err error)</span></span> &#123;</span><br><span class="line">    <span class="comment">//如果没有传递取消原因，直接panic</span></span><br><span class="line">	<span class="keyword">if</span> err == <span class="literal">nil</span> &#123;  </span><br><span class="line">		<span class="built_in">panic</span>(<span class="string">&quot;context: internal error: missing cancel error&quot;</span>)</span><br><span class="line">	&#125;</span><br><span class="line">	c.mu.Lock()</span><br><span class="line">    <span class="comment">//已经存在取消原因，说明已经取消，直接返回</span></span><br><span class="line">	<span class="keyword">if</span> c.err != <span class="literal">nil</span> &#123;  </span><br><span class="line">		c.mu.Unlock()</span><br><span class="line">		<span class="keyword">return</span> <span class="comment">// already canceled</span></span><br><span class="line">	&#125;</span><br><span class="line">    <span class="comment">//赋值取消原因</span></span><br><span class="line">	c.err = err  </span><br><span class="line">	<span class="keyword">if</span> c.done == <span class="literal">nil</span> &#123; <span class="comment">//如果通道是nil。赋值一个关闭的通道</span></span><br><span class="line">		c.done = closedchan</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123; <span class="comment">//如果通道不是 nil 。直接关闭当前通道</span></span><br><span class="line">		<span class="built_in">close</span>(c.done) </span><br><span class="line">	&#125;</span><br><span class="line">    <span class="comment">//遍历子节点，层级关闭</span></span><br><span class="line">	<span class="keyword">for</span> child := <span class="keyword">range</span> c.children &#123;</span><br><span class="line">		<span class="comment">// <span class="doctag">NOTE:</span> acquiring the child&#x27;s lock while holding parent&#x27;s lock.</span></span><br><span class="line">		child.cancel(<span class="literal">false</span>, err)</span><br><span class="line">	&#125;</span><br><span class="line">	c.children = <span class="literal">nil</span></span><br><span class="line">	c.mu.Unlock()</span><br><span class="line">	</span><br><span class="line">    <span class="comment">//解除绑定关系</span></span><br><span class="line">	<span class="keyword">if</span> removeFromParent &#123;</span><br><span class="line">		removeChild(c.Context, c)</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="timerCtx-取消，定时自动取消"><a href="#timerCtx-取消，定时自动取消" class="headerlink" title="timerCtx - 取消，定时自动取消"></a>timerCtx - 取消，定时自动取消</h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 对 cancelCtx 的 再次包装</span></span><br><span class="line"><span class="comment">// 在 cancelCtx 的基础上增加了定时器，自动取消功能</span></span><br><span class="line"><span class="keyword">type</span> timerCtx <span class="keyword">struct</span> &#123;</span><br><span class="line">	cancelCtx</span><br><span class="line">	timer *time.Timer <span class="comment">// Under cancelCtx.mu.</span></span><br><span class="line"></span><br><span class="line">	deadline time.Time</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//返回到期时间</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *timerCtx)</span> <span class="title">Deadline</span><span class="params">()</span> <span class="params">(deadline time.Time, ok <span class="keyword">bool</span>)</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> c.deadline, <span class="literal">true</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//取消自动取消</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *timerCtx)</span> <span class="title">cancel</span><span class="params">(removeFromParent <span class="keyword">bool</span>, err error)</span></span> &#123;</span><br><span class="line">	c.cancelCtx.cancel(<span class="literal">false</span>, err)</span><br><span class="line">	<span class="keyword">if</span> removeFromParent &#123;</span><br><span class="line">		<span class="comment">// Remove this timerCtx from its parent cancelCtx&#x27;s children.</span></span><br><span class="line">		removeChild(c.cancelCtx.Context, c)</span><br><span class="line">	&#125;</span><br><span class="line">	c.mu.Lock()</span><br><span class="line">	<span class="keyword">if</span> c.timer != <span class="literal">nil</span> &#123;</span><br><span class="line">		c.timer.Stop()</span><br><span class="line">		c.timer = <span class="literal">nil</span></span><br><span class="line">	&#125;</span><br><span class="line">	c.mu.Unlock()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="valueCtx-struct-实现数据存储"><a href="#valueCtx-struct-实现数据存储" class="headerlink" title="valueCtx struct - 实现数据存储"></a>valueCtx <strong>struct - 实现数据存储</strong></h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//包装 context，实现数据存储</span></span><br><span class="line"><span class="keyword">type</span> valueCtx <span class="keyword">struct</span> &#123;</span><br><span class="line">   Context</span><br><span class="line">   key, val <span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//根据 key 获取 value</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *valueCtx)</span> <span class="title">Value</span><span class="params">(key <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">interface</span></span>&#123;&#125; &#123;</span><br><span class="line">	<span class="keyword">if</span> c.key == key &#123;</span><br><span class="line">		<span class="keyword">return</span> c.val</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> c.Context.Value(key)</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="propagateCancel、removeChild-绑定-parent-和-child"><a href="#propagateCancel、removeChild-绑定-parent-和-child" class="headerlink" title="propagateCancel、removeChild - 绑定 parent 和 child"></a>propagateCancel、removeChild - 绑定 parent 和 child</h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// parent 和 child 设置关联关系；一旦 parent 取消。则 child 取消</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">propagateCancel</span><span class="params">(parent Context, child canceler)</span></span> &#123;</span><br><span class="line">	done := parent.Done()</span><br><span class="line">    <span class="comment">//父级永远不会被取消，因此不必把 child 和 parent 做关联</span></span><br><span class="line">    <span class="comment">//这种情况的parent 一般是 context.Background() OR context.TODO()</span></span><br><span class="line">	<span class="keyword">if</span> done == <span class="literal">nil</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="comment">// parent is never canceled</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//父级已经被取消，直接取消 child</span></span><br><span class="line">	<span class="keyword">select</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> &lt;-done:</span><br><span class="line">		<span class="comment">// parent is already canceled</span></span><br><span class="line">		child.cancel(<span class="literal">false</span>, parent.Err())</span><br><span class="line">		<span class="keyword">return</span></span><br><span class="line">	<span class="keyword">default</span>:</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">    <span class="comment">//断言父级，断言是否是 cancelCtx</span></span><br><span class="line">    <span class="comment">//	如果是：把 child 放置到 parent 的 children 字段</span></span><br><span class="line">    <span class="comment">//  如果不是：开启 goroutine 监控父级done，父级取消，则取消child</span></span><br><span class="line">	<span class="keyword">if</span> p, ok := parentCancelCtx(parent); ok &#123;</span><br><span class="line">		p.mu.Lock()</span><br><span class="line">		<span class="keyword">if</span> p.err != <span class="literal">nil</span> &#123;</span><br><span class="line">			<span class="comment">// parent has already been canceled</span></span><br><span class="line">			child.cancel(<span class="literal">false</span>, p.err)</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="keyword">if</span> p.children == <span class="literal">nil</span> &#123;</span><br><span class="line">				p.children = <span class="built_in">make</span>(<span class="keyword">map</span>[canceler]<span class="keyword">struct</span>&#123;&#125;)</span><br><span class="line">			&#125;</span><br><span class="line">			p.children[child] = <span class="keyword">struct</span>&#123;&#125;&#123;&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		p.mu.Unlock()</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		atomic.AddInt32(&amp;goroutines, +<span class="number">1</span>)</span><br><span class="line">		<span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">			<span class="keyword">select</span> &#123;</span><br><span class="line">			<span class="keyword">case</span> &lt;-parent.Done():</span><br><span class="line">				child.cancel(<span class="literal">false</span>, parent.Err())</span><br><span class="line">			<span class="keyword">case</span> &lt;-child.Done():</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//断言 parent Context 的类型是否是 *cancelCtx</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">parentCancelCtx</span><span class="params">(parent Context)</span> <span class="params">(*cancelCtx, <span class="keyword">bool</span>)</span></span> &#123;</span><br><span class="line">	done := parent.Done()</span><br><span class="line">	<span class="keyword">if</span> done == closedchan || done == <span class="literal">nil</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">nil</span>, <span class="literal">false</span></span><br><span class="line">	&#125;</span><br><span class="line">	p, ok := parent.Value(&amp;cancelCtxKey).(*cancelCtx)</span><br><span class="line">	<span class="keyword">if</span> !ok &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">nil</span>, <span class="literal">false</span></span><br><span class="line">	&#125;</span><br><span class="line">	p.mu.Lock()</span><br><span class="line">	ok = p.done == done</span><br><span class="line">	p.mu.Unlock()</span><br><span class="line">	<span class="keyword">if</span> !ok &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">nil</span>, <span class="literal">false</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> p, <span class="literal">true</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// removeChild removes a context from its parent.</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">removeChild</span><span class="params">(parent Context, child canceler)</span></span> &#123;</span><br><span class="line">	p, ok := parentCancelCtx(parent)</span><br><span class="line">	<span class="keyword">if</span> !ok &#123;</span><br><span class="line">		<span class="keyword">return</span></span><br><span class="line">	&#125;</span><br><span class="line">	p.mu.Lock()</span><br><span class="line">	<span class="keyword">if</span> p.children != <span class="literal">nil</span> &#123;</span><br><span class="line">		<span class="built_in">delete</span>(p.children, child)</span><br><span class="line">	&#125;</span><br><span class="line">	p.mu.Unlock()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Withcancel、WithDeadline、WithTimeout、WithValue"><a href="#Withcancel、WithDeadline、WithTimeout、WithValue" class="headerlink" title="Withcancel、WithDeadline、WithTimeout、WithValue"></a>Withcancel、WithDeadline、WithTimeout、WithValue</h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// cancelCtx struct 包一下Context，然后返回</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">WithCancel</span><span class="params">(parent Context)</span> <span class="params">(ctx Context, cancel CancelFunc)</span></span> &#123;</span><br><span class="line">	c := newCancelCtx(parent)</span><br><span class="line">	propagateCancel(parent, &amp;c)</span><br><span class="line">	<span class="keyword">return</span> &amp;c, <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123; c.cancel(<span class="literal">true</span>, Canceled) &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在 cancelCtx 的基础上，支持定时自动取消功能</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">WithDeadline</span><span class="params">(parent Context, d time.Time)</span> <span class="params">(Context, CancelFunc)</span></span> &#123;</span><br><span class="line">	<span class="keyword">if</span> cur, ok := parent.Deadline(); ok &amp;&amp; cur.Before(d) &#123;</span><br><span class="line">		<span class="comment">// The current deadline is already sooner than the new one.</span></span><br><span class="line">		<span class="keyword">return</span> WithCancel(parent)</span><br><span class="line">	&#125;</span><br><span class="line">	c := &amp;timerCtx&#123;</span><br><span class="line">		cancelCtx: newCancelCtx(parent),</span><br><span class="line">		deadline:  d,</span><br><span class="line">	&#125;</span><br><span class="line">	propagateCancel(parent, c)</span><br><span class="line">	dur := time.Until(d)</span><br><span class="line">	<span class="keyword">if</span> dur &lt;= <span class="number">0</span> &#123;</span><br><span class="line">		c.cancel(<span class="literal">true</span>, DeadlineExceeded) <span class="comment">// deadline has already passed</span></span><br><span class="line">		<span class="keyword">return</span> c, <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123; c.cancel(<span class="literal">false</span>, Canceled) &#125;</span><br><span class="line">	&#125;</span><br><span class="line">	c.mu.Lock()</span><br><span class="line">	<span class="keyword">defer</span> c.mu.Unlock()</span><br><span class="line">	<span class="keyword">if</span> c.err == <span class="literal">nil</span> &#123;</span><br><span class="line">		c.timer = time.AfterFunc(dur, <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">			c.cancel(<span class="literal">true</span>, DeadlineExceeded)</span><br><span class="line">		&#125;)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> c, <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123; c.cancel(<span class="literal">true</span>, Canceled) &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 定时取消的变一种形式，传递的不再是到期时间，而是相对当前时间的时间间隔</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">WithTimeout</span><span class="params">(parent Context, timeout time.Duration)</span> <span class="params">(Context, CancelFunc)</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> WithDeadline(parent, time.Now().Add(timeout))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在 context 存储数据</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">WithValue</span><span class="params">(parent Context, key, val <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">Context</span></span> &#123;</span><br><span class="line">	<span class="keyword">if</span> key == <span class="literal">nil</span> &#123;</span><br><span class="line">		<span class="built_in">panic</span>(<span class="string">&quot;nil key&quot;</span>)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> !reflectlite.TypeOf(key).Comparable() &#123;</span><br><span class="line">		<span class="built_in">panic</span>(<span class="string">&quot;key is not comparable&quot;</span>)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> &amp;valueCtx&#123;parent, key, val&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>基于 cancelCtx、timerCtx、valueCtx 三中 struct 以及对应的方法。实现了 批量、定时发送取消信号、数据存储的功能。其中 核心方法包括</p>
+<ul>
+<li>cancel() 用于发送取消信号（通过关闭通道 close(c.done) 发送）</li>
+<li>propagateCancel() 关联 parent 和 child。做到一旦 parent cancel 则 child cancel</li>
+<li>WithValue() 通过key获取存储的value</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Go</category>
+      </categories>
+      <tags>
+        <tag>Context</tag>
+        <tag>GO</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>GO - Time</title>
+    <url>/2020/12/08/go/go-time/</url>
+    <content><![CDATA[<h1 id="Go-time"><a href="#Go-time" class="headerlink" title="Go-time"></a>Go-time</h1><h2 id="time-time"><a href="#time-time" class="headerlink" title="time-time"></a>time-time</h2><a id="more"></a>
+
+<h2 id="time-Timer"><a href="#time-Timer" class="headerlink" title="time-Timer"></a>time-Timer</h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//暂停当前goroutine</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Sleep</span><span class="params">(d Duration)</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//定时器</span></span><br><span class="line"><span class="keyword">type</span> Timer <span class="keyword">struct</span> &#123;</span><br><span class="line">	C &lt;-<span class="keyword">chan</span> Time</span><br><span class="line">	r runtimeTimer</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//暂停timer</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *Timer)</span> <span class="title">Stop</span><span class="params">()</span> <span class="title">bool</span></span> &#123;&#125;</span><br><span class="line"><span class="comment">//暂停定时器，并且重新开始一个新的定时器</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *Timer)</span> <span class="title">Reset</span><span class="params">(d Duration)</span> <span class="title">bool</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line"><span class="comment">//快速创建timer</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">NewTimer</span><span class="params">(d Duration)</span> *<span class="title">Timer</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">After</span><span class="params">(d Duration)</span> &lt;-<span class="title">chan</span> <span class="title">Time</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">AfterFunc</span><span class="params">(d Duration, f <span class="keyword">func</span>()</span>) *<span class="title">Timer</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//开启协程，执行函数</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">goFunc</span><span class="params">(arg <span class="keyword">interface</span>&#123;&#125;, seq <span class="keyword">uintptr</span>)</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//定时器默认方法；发送当前时间到 channel</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">sendTime</span><span class="params">(c <span class="keyword">interface</span>&#123;&#125;, seq <span class="keyword">uintptr</span>)</span></span> &#123;&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="time-Ticker"><a href="#time-Ticker" class="headerlink" title="time-Ticker"></a>time-Ticker</h2><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="keyword">type</span> Ticker <span class="keyword">struct</span> &#123;</span><br><span class="line">	C &lt;-<span class="keyword">chan</span> Time <span class="comment">// The channel on which the ticks are delivered.</span></span><br><span class="line">	r runtimeTimer</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//暂停ticker</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *Ticker)</span> <span class="title">Stop</span><span class="params">()</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//快速创建ticker</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">NewTicker</span><span class="params">(d Duration)</span> *<span class="title">Ticker</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Tick</span><span class="params">(d Duration)</span> &lt;-<span class="title">chan</span> <span class="title">Time</span></span> &#123;&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+]]></content>
+      <categories>
+        <category>Go</category>
+      </categories>
+      <tags>
+        <tag>GO</tag>
+        <tag>Time</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Linux ssh免密登录配置</title>
+    <url>/2021/03/04/linux/linux-ssh-mian-mi-deng-lu-pei-zhi/</url>
+    <content><![CDATA[<h1 id="Linux-ssh免密登录配置"><a href="#Linux-ssh免密登录配置" class="headerlink" title="Linux ssh免密登录配置"></a>Linux ssh免密登录配置</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><hr>
+<p>ssh 通过加密解密的方式进行权限的验证；因此需要在客户端生成一对密钥；同时复制公钥到服务端。</p>
+<a id="more"></a>
+
+<h2 id="生成密钥对"><a href="#生成密钥对" class="headerlink" title="生成密钥对"></a>生成密钥对</h2><hr>
+<p>客户端终端执行一下命令</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 一顿操作</span></span><br><span class="line">ssh-keygen</span><br></pre></td></tr></table></figure>
+<p>~/.ssh 目录会生成一对密钥；id_rsa (私钥) 、id_rsa.pub（公钥）</p>
+<h2 id="复制公钥到远程服务器"><a href="#复制公钥到远程服务器" class="headerlink" title="复制公钥到远程服务器"></a>复制公钥到远程服务器</h2><hr>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#方法一：ssh-copy-id</span></span><br><span class="line"><span class="comment"># ssh-copy-id - 将你的公共密钥填充到一个远程机器上的authorized_keys文件中</span></span><br><span class="line"><span class="comment"># 远程服务器 ～/.ssh/authorized_keys 文件</span></span><br><span class="line"></span><br><span class="line">ssh-copy-id &lt;Users&gt;@host</span><br><span class="line"></span><br><span class="line"><span class="comment"># 会提示输入远程服务器密码</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#方法二：直接复制内容</span></span><br><span class="line"><span class="comment"># 客户端查看公钥内容</span></span><br><span class="line">cat ~/.ssh/id_rsa.pub</span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制内容</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 粘贴到远程服务器 authorized_keys 文件</span></span><br><span class="line"></span><br><span class="line">vim ～/.ssh/authorized_key</span><br><span class="line"></span><br><span class="line"><span class="comment"># 粘贴后保存</span></span><br><span class="line">:wq</span><br></pre></td></tr></table></figure>
+<h2 id="连接验证"><a href="#连接验证" class="headerlink" title="连接验证"></a>连接验证</h2><hr>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># ssh 连接远程服务器</span></span><br><span class="line">ssh &lt;Users&gt;@host</span><br></pre></td></tr></table></figure>
+<h2 id="SSH-HostName-方式链接配置"><a href="#SSH-HostName-方式链接配置" class="headerlink" title="SSH HostName 方式链接配置"></a>SSH HostName 方式链接配置</h2><hr>
+<p>配置远程服务器地址和用户名，从而避免每次输入用户名和远程服务器地址</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 编辑 ~/.ssh/config 文件 添加配置</span></span><br><span class="line"></span><br><span class="line"><span class="string">Host</span> <span class="string">&lt;以后使用的hostname&gt;</span></span><br><span class="line">        <span class="string">HostName</span> <span class="string">远程服务器地址</span></span><br><span class="line">        <span class="string">User</span> <span class="string">用户名</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 示例配置</span></span><br><span class="line"><span class="string">Host</span> <span class="string">aliyun</span></span><br><span class="line">		<span class="string">HostName</span> <span class="number">48.44</span><span class="number">.102</span><span class="number">.134</span></span><br><span class="line">        <span class="string">User</span> <span class="string">root</span>     </span><br><span class="line"><span class="comment"># 登录</span></span><br><span class="line"><span class="string">ssh</span> <span class="string">aliyun</span></span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
+      <tags>
+        <tag>ssh</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Mysql 用户、权限管理</title>
+    <url>/2021/03/05/mysql/mysql-yong-hu-quan-xian-guan-li/</url>
+    <content><![CDATA[<h2 id="创建用户"><a href="#创建用户" class="headerlink" title="创建用户"></a>创建用户</h2><figure class="highlight"><table><tr><td class="code"><pre><span class="line">mysql&gt; create user &#x27;用户名&#x27;@&#x27;主机地址&#x27; identified by &#x27;密码&#x27;;</span><br></pre></td></tr></table></figure>
+
+<a id="more"></a>
+
+<h2 id="修改用户密码"><a href="#修改用户密码" class="headerlink" title="修改用户密码"></a>修改用户密码</h2><figure class="highlight"><table><tr><td class="code"><pre><span class="line">mysql&gt; alter user &#x27;用户名&#x27;@&#x27;主机地址&#x27; identified by &#x27;密码&#x27;;</span><br></pre></td></tr></table></figure>
+<h2 id="修改用户名"><a href="#修改用户名" class="headerlink" title="修改用户名"></a>修改用户名</h2><figure class="highlight"><table><tr><td class="code"><pre><span class="line">mysql&gt; rename user &#x27;旧用户&#x27;@&#x27;主机名&#x27; TO &#x27;新用户名&#x27;@&#x27;主机名&#x27;;</span><br></pre></td></tr></table></figure>
+<h2 id="用户权限"><a href="#用户权限" class="headerlink" title="用户权限"></a>用户权限</h2><figure class="highlight"><table><tr><td class="code"><pre><span class="line">mysql&gt; grant 权限列表 on 库.表 to &#x27;用户名&#x27;@&#x27;主机地址&#x27;;</span><br><span class="line">mysql&gt; flush privileges;</span><br></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th align="center">权限</th>
+<th align="center">作用范围</th>
+<th align="center">作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">all</td>
+<td align="center">服务</td>
+<td align="center">所有权限</td>
+</tr>
+<tr>
+<td align="center">select</td>
+<td align="center">表、列</td>
+<td align="center">选择行</td>
+</tr>
+<tr>
+<td align="center">insert</td>
+<td align="center">表、列</td>
+<td align="center">插入行</td>
+</tr>
+<tr>
+<td align="center">update</td>
+<td align="center">表、列</td>
+<td align="center">更新行</td>
+</tr>
+<tr>
+<td align="center">delete</td>
+<td align="center">表</td>
+<td align="center">删除行</td>
+</tr>
+<tr>
+<td align="center">create</td>
+<td align="center">数据库、表、索引</td>
+<td align="center">创建</td>
+</tr>
+<tr>
+<td align="center">drop</td>
+<td align="center">数据库、表、视图</td>
+<td align="center">删除</td>
+</tr>
+<tr>
+<td align="center">reload</td>
+<td align="center">服务器</td>
+<td align="center">允许使用flush语句</td>
+</tr>
+<tr>
+<td align="center">shutdown</td>
+<td align="center">服务器</td>
+<td align="center">关闭服务</td>
+</tr>
+<tr>
+<td align="center">process</td>
+<td align="center">服务器</td>
+<td align="center">查看线程信息</td>
+</tr>
+<tr>
+<td align="center">file</td>
+<td align="center">服务器</td>
+<td align="center">文件操作</td>
+</tr>
+<tr>
+<td align="center">grant option</td>
+<td align="center">数据库、表、存储过程</td>
+<td align="center">授权</td>
+</tr>
+<tr>
+<td align="center">references</td>
+<td align="center">数据库、表</td>
+<td align="center">外键约束的父表</td>
+</tr>
+<tr>
+<td align="center">index</td>
+<td align="center">表</td>
+<td align="center">创建/删除索引</td>
+</tr>
+<tr>
+<td align="center">alter</td>
+<td align="center">表</td>
+<td align="center">修改表结构</td>
+</tr>
+<tr>
+<td align="center">show databases</td>
+<td align="center">服务器</td>
+<td align="center">查看数据库名称</td>
+</tr>
+<tr>
+<td align="center">super</td>
+<td align="center">服务器</td>
+<td align="center">超级权限</td>
+</tr>
+<tr>
+<td align="center">create temporary tables</td>
+<td align="center">表</td>
+<td align="center">创建临时表</td>
+</tr>
+<tr>
+<td align="center">lock tables</td>
+<td align="center">数据库</td>
+<td align="center">锁表</td>
+</tr>
+<tr>
+<td align="center">execute</td>
+<td align="center">存储过程</td>
+<td align="center">执行</td>
+</tr>
+<tr>
+<td align="center">replication client</td>
+<td align="center">服务器</td>
+<td align="center">允许查看主/从/二进制日志状态</td>
+</tr>
+<tr>
+<td align="center">replication slave</td>
+<td align="center">服务器</td>
+<td align="center">主从复制</td>
+</tr>
+<tr>
+<td align="center">create view</td>
+<td align="center">视图</td>
+<td align="center">创建视图</td>
+</tr>
+<tr>
+<td align="center">show view</td>
+<td align="center">视图</td>
+<td align="center">查看视图</td>
+</tr>
+<tr>
+<td align="center">create routine</td>
+<td align="center">存储过程</td>
+<td align="center">创建存储过程</td>
+</tr>
+<tr>
+<td align="center">alter routine</td>
+<td align="center">存储过程</td>
+<td align="center">修改/删除存储过程</td>
+</tr>
+<tr>
+<td align="center">create user</td>
+<td align="center">服务器</td>
+<td align="center">创建用户</td>
+</tr>
+<tr>
+<td align="center">event</td>
+<td align="center">数据库</td>
+<td align="center">创建/更改/删除/查看事件</td>
+</tr>
+<tr>
+<td align="center">trigger</td>
+<td align="center">表</td>
+<td align="center">触发器</td>
+</tr>
+<tr>
+<td align="center">create tablespace</td>
+<td align="center">服务器</td>
+<td align="center">创建/更改/删除表空间/日志文件</td>
+</tr>
+<tr>
+<td align="center">proxy</td>
+<td align="center">服务器</td>
+<td align="center">代理成为其它用户</td>
+</tr>
+<tr>
+<td align="center">usage</td>
+<td align="center">服务器</td>
+<td align="center">没有权限</td>
+</tr>
+</tbody></table>
+<h2 id="删除用户"><a href="#删除用户" class="headerlink" title="删除用户"></a>删除用户</h2><figure class="highlight"><table><tr><td class="code"><pre><span class="line">mysql&gt; drop user &quot;用户名&quot;</span><br></pre></td></tr></table></figure>
+
+
+
+]]></content>
+      <categories>
+        <category>Mysql</category>
+      </categories>
+      <tags>
+        <tag>mysql</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Mysql 配置、启动、系统变量</title>
+    <url>/2021/03/11/mysql/mysql-pei-zhi-qi-dong-xi-tong-bian-liang/</url>
+    <content><![CDATA[<h2 id="命令行中配置选项"><a href="#命令行中配置选项" class="headerlink" title="命令行中配置选项"></a>命令行中配置选项</h2><hr>
+<p>命令行中配置选项分为长形式和短形式方式。例如：</p>
+<figure class="highlight"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 配置默认的存储引擎-长形式</span></span><br><span class="line">mysql&gt; mysqld --default-storage-engine=MyISAM</span><br><span class="line"></span><br><span class="line"><span class="comment"># 链接数据库-短形式</span></span><br><span class="line">mysql&gt; mysql -h127.0.0.1 -uroot -p</span><br></pre></td></tr></table></figure>
+
+<a id="more"></a>
+
+<h3 id="长形式"><a href="#长形式" class="headerlink" title="长形式"></a>长形式</h3><figure class="highlight"><table><tr><td class="code"><pre><span class="line"><span class="comment">--启动选项1[=值1] --启动选项2[=值2] ... --启动选项n[=值n]</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 例如：</span></span><br><span class="line">mysql&gt; mysqld --default-storage-engine=MyISAM</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>选项名前加上<code>--</code>前缀</li>
+<li>如果选项名是由多个单词构成的，它们之间可以由短划线<code>-</code>连接起来，也可以使用下划线<code>_</code>连接起来</li>
+<li>选项名、=、选项值之间不可以有空白字符</li>
+</ol>
+<h3 id="短形式"><a href="#短形式" class="headerlink" title="短形式"></a>短形式</h3><figure class="highlight"><table><tr><td class="code"><pre><span class="line">-启动选项1[空格][值1] -启动选项2[空格][值2] ... -启动选项n[空格][值n]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 例如：</span></span><br><span class="line">mysql&gt; mysql -h127.0.0.1 -uroot -p</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>短形式的选项名只有一个字母，选项名前只加一个短划线<code>-</code>前缀</li>
+<li>选项名和选项值之间可以没有间隙，或者用空白字符隔开</li>
+<li><code>-p</code>选项有些特殊，<code>-p</code>和密码值之间不能有空白字符</li>
+</ol>
+<h2 id="配置文件中配置选项"><a href="#配置文件中配置选项" class="headerlink" title="配置文件中配置选项"></a>配置文件中配置选项</h2><hr>
+<h3 id="配置选项"><a href="#配置选项" class="headerlink" title="配置选项"></a>配置选项</h3><p>与在命令行中指定启动选项不同的是，配置文件中的启动选项被划分为若干个组，每个组有一个组名，用中括号<code>[]</code>扩起来，像这样：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">[server]</span><br><span class="line">option1     					<span class="comment">#这是option1，该选项不需要选项值</span></span><br><span class="line">option2 = value2      <span class="comment">#这是option2，该选项需要选项值</span></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">[mysqld]</span><br><span class="line">(具体的启动选项...)</span><br><span class="line"></span><br><span class="line">[mysqld_safe]</span><br><span class="line">(具体的启动选项...)</span><br><span class="line"></span><br><span class="line">[client]</span><br><span class="line">(具体的启动选项...)</span><br><span class="line"></span><br><span class="line">[mysql]</span><br><span class="line">(具体的启动选项...)</span><br><span class="line"></span><br><span class="line">[mysqladmin]</span><br><span class="line">(具体的启动选项...)</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>配置文件中只能使用长形式的选项</li>
+<li>定的启动选项不允许加<code>--</code>前缀，并且每行只指定一个选项</li>
+<li><code>=</code>周围可以有空白字符</li>
+<li>使用<code>#</code>来添加注释，从<code>#</code>出现直到行尾的内容都属于注释内容，读取配置文件时会忽略这些注释内容</li>
+</ol>
+<h3 id="加载配置选项"><a href="#加载配置选项" class="headerlink" title="加载配置选项"></a>加载配置选项</h3><p>配置文件中不同的选项组是给不同的启动命令使用的，如果选项组名称与程序名称相同，则组中的选项将专门应用于该程序。有两个选项组比较特别：</p>
+<ul>
+<li><p><code>[server]</code>组下边的启动选项将作用于所有的服务器程序。</p>
+</li>
+<li><p><code>[client]</code>组下边的启动选项将作用于所有的客户端程序。</p>
+</li>
+</ul>
+<p>需要注意的一点是，<code>mysqld_safe</code>和<code>mysql.server</code>这两个程序在启动时都会读取<code>[mysqld]</code>选项组中的内容。读取如下：</p>
+<table>
+<thead>
+<tr>
+<th>启动命令</th>
+<th>类别</th>
+<th>能读取的组</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>mysqld</td>
+<td>启动服务器</td>
+<td><code>[mysqld]</code>、<code>[server]</code></td>
+</tr>
+<tr>
+<td>mysqld_safe</td>
+<td>启动服务器</td>
+<td><code>[mysqld]</code>、<code>[server]</code>、<code>[mysqld_safe]</code></td>
+</tr>
+<tr>
+<td>mysql.server</td>
+<td>启动服务器</td>
+<td><code>[mysqld]</code>、<code>[server]</code>、<code>[mysqld_safe]</code></td>
+</tr>
+<tr>
+<td>mysql</td>
+<td>启动客户端</td>
+<td><code>[mysql]</code>、<code>[client]</code></td>
+</tr>
+<tr>
+<td>mysqladmin</td>
+<td>启动客户端</td>
+<td><code>[mysqladmin]</code>、<code>[client]</code></td>
+</tr>
+<tr>
+<td>mysqldump</td>
+<td>启动客户端</td>
+<td><code>[mysqldump]</code>、<code>[client]</code></td>
+</tr>
+</tbody></table>
+<h2 id="系统变量"><a href="#系统变量" class="headerlink" title="系统变量"></a>系统变量</h2><hr>
+<h3 id="系统变量作用范围"><a href="#系统变量作用范围" class="headerlink" title="系统变量作用范围"></a>系统变量作用范围</h3><ul>
+<li><p><code>GLOBAL</code>：全局变量，影响服务器的整体操作。</p>
+</li>
+<li><p><code>SESSION</code>：会话变量，影响某个客户端连接的操作。（注：<code>SESSION</code>有个别名叫<code>LOCAL</code>）</p>
+</li>
+</ul>
+<h3 id="查看系统变量"><a href="#查看系统变量" class="headerlink" title="查看系统变量"></a>查看系统变量</h3><figure class="highlight"><table><tr><td class="code"><pre><span class="line">mysql&gt; SHOW [GLOBAL|SESSION] VARIABLES [LIKE 匹配的模式];</span><br></pre></td></tr></table></figure>
+<h3 id="设置系统变量"><a href="#设置系统变量" class="headerlink" title="设置系统变量"></a>设置系统变量</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SET</span> [<span class="keyword">GLOBAL</span>|<span class="keyword">SESSION</span>] 系统变量名 = 值;</span><br><span class="line"><span class="comment"># 或者</span></span><br><span class="line"><span class="keyword">SET</span> [@@(<span class="keyword">GLOBAL</span>|<span class="keyword">SESSION</span>).]var_name = XXX;</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="状态变量"><a href="#状态变量" class="headerlink" title="状态变量"></a>状态变量</h2><hr>
+<p>为了让我们更好的了解服务器程序的运行情况，<code>MySQL</code>服务器程序中维护了好多关于程序运行状态的变量，它们被称为<code>状态变量</code>。比方说<code>Threads_connected</code>表示当前有多少客户端与服务器建立了连接。</p>
+<p>查看状态变量：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> [<span class="keyword">GLOBAL</span>|<span class="keyword">SESSION</span>] <span class="keyword">STATUS</span> [<span class="keyword">LIKE</span> 匹配的模式];</span><br><span class="line"></span><br><span class="line"><span class="comment"># 例如：</span></span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">STATUS</span> <span class="keyword">LIKE</span> <span class="string">&#x27;thread%&#x27;</span>;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>Mysql</category>
+      </categories>
+      <tags>
+        <tag>mysql</tag>
+      </tags>
+  </entry>
+</search>
